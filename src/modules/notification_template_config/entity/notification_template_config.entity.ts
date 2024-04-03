@@ -5,12 +5,13 @@ import {
   Timestamp,
   ManyToOne,
   JoinColumn,
-} from 'typeorm';
-import { NotificationEvents } from 'src/modules/notification_events/entity/notification_events.entity';
+} from "typeorm";
+import { UUID } from "typeorm/driver/mongodb/bson.typings";
+// import { NotificationEvents } from 'src/modules/notification_events/entity/notification_events.entity';
 
-@Entity('notification_template_config')
-export class Notification_Template_Config {
-  @PrimaryGeneratedColumn('increment')
+@Entity("NotificationTemplateConfig")
+export class NotificationTemplateConfig {
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   //@ManyToOne(() => Notification_Events, (Notification_Events) => Notification_Events.id)
@@ -18,10 +19,13 @@ export class Notification_Template_Config {
   //test: string;
 
   @Column()
-  template_id: string;
+  template_id: number;
 
   @Column()
   language: string;
+
+  @Column()
+  type: string;
 
   @Column()
   subject: string;
@@ -29,12 +33,18 @@ export class Notification_Template_Config {
   @Column()
   body: string;
 
-  // @Column()
-  // params: string;
+  @Column()
+  status: string;
 
   @Column()
   createdOn: Date;
 
+  @Column({ type: "uuid" })
+  createdBy?: string;
+
   @Column()
-  updatedOn: Date;
+  updatedOn?: Date;
+
+  @Column({ type: "uuid" })
+  updatedBy?: string;
 }

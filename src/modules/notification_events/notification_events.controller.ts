@@ -1,44 +1,68 @@
-import { Controller } from '@nestjs/common';
-import { NotificationEventsService } from './notification_events.service';
-import { NotificationEvents } from './entity/notification_events.entity';
-import { Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  Res,
+  UsePipes,
+  ValidationPipe,
+} from "@nestjs/common";
+// import { NotificationTemplates } from "./notification-templates.entity";
+import { NotificationTemplates } from "./entity/notification_events.entity";
+// import { NotificationTemplatesService } from "./notification-templates.service";
+import { NotificationTemplatesService } from "./notification_events.service";
+import { Response } from "express";
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiInternalServerErrorResponse,
+} from "@nestjs/swagger";
+import { remove } from "winston";
 
-@Controller('notification-events')
-@ApiTags('Event-type')
-export class NotificationEventsController {
-  constructor(private notificationeventsService: NotificationEventsService) { }
+@Controller("notification-templates")
+export class NotificationTemplatesController {
+  constructor(
+    private readonly notificationTemplatesService: NotificationTemplatesService
+  ) {}
 
   @Get()
-  index(): Promise<NotificationEvents[]> {
-    return this.notificationeventsService.findAll();
+  findAll(): Promise<NotificationTemplates[]> {
+    return this.notificationTemplatesService.findAll();
   }
 
-  @Post('create')
-  async create(@Body() NotificatioEventData: NotificationEvents): Promise<any> {
-    return this.notificationeventsService.create(NotificatioEventData);
+  @Get(":id")
+  findOne(@Param("id") id: string): Promise<NotificationTemplates | undefined> {
+    return this.notificationTemplatesService.findOne(+id);
   }
 
-  @Put(':id/update')
-  async update(@Param('id') id, @Body() NotificatioEventData: NotificationEvents): Promise<any> {
-    NotificatioEventData.id = Number(id);
-    console.log('Update #' + NotificatioEventData.id)
-    return this.notificationeventsService.update(NotificatioEventData);
-  }
-
-  @Delete(':id/delete')
-  async delete(@Param('id') id): Promise<any> {
-    return this.notificationeventsService.delete(id);
-  }
-
-  @Get(':action')
-  public getNotificationEventByAction(@Param('action') action: string): Promise<NotificationEvents> {
-    return this.notificationeventsService.getNotificationEventByAction(action);
-  }
-
-  //   async findOneByAction(action: string): Promise<Notification_Events> {
-  //     return await this.notificationeventsService.findOne<Notification_Events>({ where: { action } });
+  // @Post()
+  // @ApiCreatedResponse()
+  // create(@Body() data, @Res() response: Response) {
+  //   return this.notificationTemplatesService.create(data, response);
   // }
+  @Post()
+  @ApiCreatedResponse({ description: "created" })
+  @ApiInternalServerErrorResponse({ description: "internal server error" })
+  @ApiBadRequestResponse({ description: "Invalid request" })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  // @ApiBody({type: create})
+  async create(@Body() data, @Res() response: Response) {
+    return this.notificationTemplatesService.create(data, response);
+  }
 
+  @Put(":id")
+  update(
+    @Param("id") id: string,
+    @Body() data: Partial<NotificationTemplates>
+  ): Promise<NotificationTemplates | undefined> {
+    return this.notificationTemplatesService.update(+id, data);
+  }
 
+  @Delete(":id")
+  remove(@Param("id") id: string): Promise<void> {
+    return this.notificationTemplatesService.remove(+id);
+  }
 }
