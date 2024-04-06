@@ -9,14 +9,15 @@ import { NotificationTemplateConfigModule } from "./modules/notification_templat
 import { DatabaseModule } from "./common/database-modules";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { LoggerModule } from "./logger/logger.module";
+// import {NotificationModule}
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     NotificationEventsModule,
-    NotificationTemplateConfigModule,
     LoggerModule,
+    NotificationTemplateConfigModule,
   ],
 
   controllers: [AppController],
