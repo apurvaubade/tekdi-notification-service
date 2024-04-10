@@ -96,7 +96,6 @@ export class NotificationTemplatesController {
           .send(result.error);
       }
     } catch (error) {
-      console.log(error);
       return response
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .send("Internal Server Error");
@@ -104,7 +103,14 @@ export class NotificationTemplatesController {
   }
 
   @Delete(":id")
-  remove(@Param("id") id: string): Promise<void> {
-    return this.notificationTemplatesService.remove(+id);
+  @ApiInternalServerErrorResponse({ description: "Server Error" })
+  @ApiBadRequestResponse({ description: "Invalid Request" })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiOkResponse({ description: "Deleted Notification template & config" })
+  async deleteTemplates(@Param("id") id: number, @Res() response: Response) {
+    return this.notificationTemplatesService.deleteNotificationTemplateAndConfig(
+      id,
+      response
+    );
   }
 }

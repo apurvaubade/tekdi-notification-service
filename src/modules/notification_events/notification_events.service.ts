@@ -172,11 +172,9 @@ export class NotificationTemplatesService {
     response: Response
   ) {
     const apiId = "update.notification.notificationtemplate";
-
+    var result = {};
     try {
-      console.log("id:", id);
-      console.log("updateEventDto:", updateEventDto);
-
+      var type = "";
       const templateUpdateFields: any = {};
       if (updateEventDto.hasOwnProperty("title"))
         templateUpdateFields.title = updateEventDto.title;
@@ -191,63 +189,84 @@ export class NotificationTemplatesService {
 
       if (Object.keys(templateUpdateFields).length > 0) {
         templateUpdateFields.updatedOn = new Date();
+        result = await this.notificationTemplatesRepository.update(
+          id,
+          templateUpdateFields
+        );
+      }
+      console.log("result", result);
+      const templateConfigUpdateFields: any = {};
+      if (updateEventDto.hasOwnProperty("language"))
+        templateConfigUpdateFields.language = updateEventDto.language;
+      if (updateEventDto.hasOwnProperty("status"))
+        templateConfigUpdateFields.status = updateEventDto.status;
+      if (updateEventDto.hasOwnProperty("type")) {
+        type = updateEventDto.type;
       }
 
-      const templateResult = await this.notificationTemplatesRepository.update(
-        id,
-        templateUpdateFields
-      );
-      console.log("templateResult", templateResult);
+      var isEmailPresent = 0;
+      var isPushPresent = 0;
+      var emailSubject = "";
+      var emailBody = "";
+      var pushSubject = "";
+      var pushBody = "";
+      if (updateEventDto.hasOwnProperty("email")) {
+        isEmailPresent = 1;
+        if (updateEventDto.email.hasOwnProperty("subject"))
+          emailSubject = updateEventDto.email.subject;
+        if (updateEventDto.email.hasOwnProperty("body"))
+          emailBody = updateEventDto.email.body;
+      }
+      if (updateEventDto.hasOwnProperty("push")) {
+        isPushPresent = 1;
+        if (updateEventDto.push.hasOwnProperty("subject"))
+          pushSubject = updateEventDto.push.subject;
+        if (updateEventDto.push.hasOwnProperty("body"))
+          pushBody = updateEventDto.push.body;
+      }
 
-      if (updateEventDto.hasOwnProperty("type")) {
-        const templateConfigUpdateFields: any = {};
-        if (updateEventDto.hasOwnProperty("language"))
-          templateConfigUpdateFields.language = updateEventDto.language;
-        if (updateEventDto.type == "email") {
-          if (updateEventDto.hasOwnProperty("email")) {
-            if (updateEventDto.email.hasOwnProperty("subject"))
-              templateConfigUpdateFields.subject = updateEventDto.email.subject;
-            if (updateEventDto.email.hasOwnProperty("body"))
-              templateConfigUpdateFields.body = updateEventDto.email.body;
-          }
-        } else if (updateEventDto.type == "push") {
-          if (updateEventDto.hasOwnProperty("push")) {
-            if (updateEventDto.push.hasOwnProperty("subject"))
-              templateConfigUpdateFields.subject = updateEventDto.push.subject;
-            if (updateEventDto.push.hasOwnProperty("body"))
-              templateConfigUpdateFields.body = updateEventDto.push.body;
-          }
-        }
-        // else {
-        //   return response
-        //     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        //     .send(
-        //       APIResponse.error(
-        //         apiId,
-        //         "Invalid type,must be email or push",
-        //         "",
-        //         "BAD_REQUEST"
-        //       )
-        //     );
-        // }
-        if (updateEventDto.status !== undefined)
-          templateConfigUpdateFields.status = updateEventDto.status;
-
+      if (type != "") {
+        templateUpdateFields.type = type;
+      }
+      if (isEmailPresent == 0 && isPushPresent == 0) {
         if (Object.keys(templateConfigUpdateFields).length > 0) {
-          templateConfigUpdateFields.updatedOn = new Date();
-        }
-        console.log("Template config update data", templateConfigUpdateFields);
-        const templateConfigResult =
-          await this.notificationTempConfigRepository.update(
-            { template_id: id, type: updateEventDto.type } as unknown,
+          templateUpdateFields.updatedOn = new Date();
+          result = await this.notificationTempConfigRepository.update(
+            { template_id: id } as unknown,
             templateConfigUpdateFields
           );
+        }
+      } else {
+        if (isEmailPresent == 1) {
+          templateConfigUpdateFields.subject = emailSubject;
+          templateConfigUpdateFields.body = emailBody;
+          if (Object.keys(templateConfigUpdateFields).length > 0) {
+            templateUpdateFields.updatedOn = new Date();
+            result = await this.notificationTempConfigRepository.update(
+              { template_id: id, type: "email" } as unknown,
+              templateConfigUpdateFields
+            );
+          }
+        }
+        if (isPushPresent == 1) {
+          templateConfigUpdateFields.subject = pushSubject;
+          templateConfigUpdateFields.body = pushBody;
+          if (Object.keys(templateConfigUpdateFields).length > 0) {
+            templateUpdateFields.updatedOn = new Date();
+            result = await this.notificationTempConfigRepository.update(
+              { template_id: id, type: "push" } as unknown,
+              templateConfigUpdateFields
+            );
+          }
+        }
       }
 
       return response
         .status(HttpStatus.OK)
-        .send(APIResponse.success(apiId, { templateResult }, "Updated"));
+        .send(APIResponse.success(apiId, { result }, "Updated"));
     } catch (e) {
+      console.log(e);
+
       return response
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .send(
@@ -290,7 +309,53 @@ export class NotificationTemplatesService {
     }
   }
 
-  async remove(id: number): Promise<void> {
-    await this.notificationTemplatesRepository.delete(id);
+  async deleteNotificationTemplateAndConfig(
+    id: number,
+    response
+  ): Promise<void> {
+    const apiId = "delete.notification.notificationtemplateandconfig";
+
+    try {
+      const templateExists = await this.notificationTemplatesRepository.findOne(
+        { where: { id } }
+      );
+
+      if (!templateExists) {
+        return response
+          .status(HttpStatus.NOT_FOUND)
+          .send(
+            APIResponse.error(
+              apiId,
+              `Template with ID ${id} not found`,
+              undefined,
+              "NOT_FOUND"
+            )
+          );
+      }
+
+      await this.notificationTempConfigRepository.query(
+        `DELETE FROM "NotificationTemplateConfig" WHERE "template_id" = $1`,
+        [id]
+      );
+
+      const templateResult = await this.notificationTemplatesRepository.delete(
+        id
+      );
+
+      return response
+        .status(HttpStatus.OK)
+        .send(APIResponse.success(apiId, templateResult, "Record Deleted"));
+    } catch (e) {
+      return response
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send(
+          APIResponse.error(
+            apiId,
+            "Something went wrong in Deletion",
+            JSON.stringify(e),
+            "INTERNAL_SERVER_ERROR"
+          )
+        );
+    }
   }
 }
